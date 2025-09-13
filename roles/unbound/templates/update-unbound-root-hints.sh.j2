@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+DEST="{{ unbound_root_hints | default('/var/lib/unbound/root.hints') }}"
+TMP="${DEST}.tmp"
+
+mkdir -p "$(dirname "$DEST")"
+
+if curl -fsSL https://www.internic.net/domain/named.root -o "$TMP"; then
+  mv "$TMP" "$DEST"
+else
+  # Fallback si HTTP KO
+  dig @9.9.9.9 . NS > "$DEST"
+fi
+
+chown unbound:unbound "$DEST" || true
+chmod 0644 "$DEST"

@@ -1,0 +1,44 @@
+{% raw %}
+#!/usr/bin/env python3
+import http.server, socketserver, subprocess, os
+
+listen = os.environ.get("EXPORTER_LISTEN", "0.0.0.0:9167")
+HOST, PORT = listen.split(":")
+PORT = int(PORT)
+CONTROL_SOCK = os.environ.get("UNBOUND_CONTROL_SOCK", "/run/unbound.ctl")
+
+def get_stats():
+    try:
+        out = subprocess.check_output(
+            ["unbound-control", "-s", CONTROL_SOCK, "stats_noreset"],
+            text=True
+        )
+        lines = []
+        for ln in out.strip().splitlines():
+            if "=" in ln:
+                k, v = ln.split("=", 1)
+                k = "unbound_" + k.replace(".", "_")
+                try:
+                    float(v)
+                    lines.append(f"{k} {v}")
+                except:
+                    lines.append(f'{k}{{value="{v}"}} 1')
+        return "\n".join(lines) + "\n"
+    except Exception as e:
+        return f'# error {e}\n'
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path != "/metrics":
+            self.send_response(404); self.end_headers(); return
+        body = get_stats().encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain; version=0.0.4")
+        self.end_headers()
+        self.wfile.write(body)
+    def log_message(self, fmt, *args):
+        return
+
+with socketserver.TCPServer((HOST, PORT), Handler) as httpd:
+    httpd.serve_forever()
+{% endraw %}

@@ -1,0 +1,17 @@
+# fichiers locaux (réels) à ne pas publier
+inventory.ini
+group_vars/all.yml
+host_vars/
+# clés / secrets
+*.key
+*.pem
+id_*
+authorized_keys
+# artefacts
+*.retry
+*.log
+__pycache__/
+.venv/
+inventory.ini
+group_vars/all.yml
+host_vars/

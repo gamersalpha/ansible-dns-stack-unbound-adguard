@@ -1,0 +1,5 @@
+- hosts: unbound_hosts
+  become: true
+  roles:
+    - unbound
+    - unbound_exporter

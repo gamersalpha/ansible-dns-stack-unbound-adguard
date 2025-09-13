@@ -1,0 +1,60 @@
+# Où Unbound écoute (tu es en 0.0.0.0:53 aujourd'hui)
+#unbound_listen_ipv4: ["0.0.0.0"]
+unbound_listen_ipv4: ["192.0.2.7", "127.0.0.1"]
+unbound_listen_ipv6: []          # vide = pas d'IPv6 ; sinon ["::"]
+unbound_port: 53
+
+# Comportement réseau / protocole
+unbound_do_ip6: false
+unbound_do_udp: true
+unbound_do_tcp: true
+
+# Cache & perf (identiques à ta conf)
+unbound_cache_min_ttl: 300
+unbound_cache_max_ttl: 14400
+unbound_rrset_cache_size: "256m"
+unbound_msg_cache_size: "128m"
+unbound_so_rcvbuf: "1m"
+
+# Logs
+unbound_logfile: "/var/log/unbound.log"
+unbound_verbosity: 2
+unbound_log_queries: true
+unbound_log_replies: true
+unbound_log_servfail: false  # tu ne l’avais pas, mets true si tu veux
+
+# Sécurité / durcissement (tu en as une partie via defaults)
+unbound_qname_minimisation: true
+unbound_harden_glue: true
+unbound_harden_dnssec_stripped: true
+unbound_harden_below_nxdomain: true
+unbound_aggressive_nsec: true
+unbound_edns_buffer_size: 1232
+unbound_harden_referral_path: true
+unbound_serve_expired: true
+unbound_serve_expired_ttl: 3600
+
+# DNSSEC
+unbound_auto_trust_anchor_file: "/var/lib/unbound/root.key"
+
+# root hints (tu n’en avais pas explicitement ; on l’ajoute + cron update)
+unbound_root_hints: "/var/lib/unbound/root.hints"
+unbound_manage_root_hints: true
+
+# ACL autorisées (tes plages actuelles)
+
+unbound_acl_allow:
+  - "192.0.2.6/32"   # VM AdGuard
+  - "127.0.0.1/32"     # tests locaux
+
+# TLD à refuser (tes blocs actuels)
+unbound_tld_refuse: ["ru","cn","su","kp","ir"]
+
+# Redirects locaux (tes trois enregistrements)
+unbound_local_redirects:
+  - { zone: "portail.example.lan.", a: "192.168.1.10" }
+  - { zone: "bunkerweb.example.lan.", a: "192.168.1.11" }
+  - { zone: "local.example.lan.", a: "192.168.1.11" }
+# Exporter Prometheus pour Unbound
+unbound_exporter_listen: "127.0.0.1:9167"   # ou "192.0.2.7:9167" si Prometheus est externe
+unbound_control_sock: "/run/unbound.ctl"    # correspond à ton remote-control.conf

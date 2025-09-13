@@ -1,0 +1,7 @@
+- hosts: unbound
+  become: true
+  tasks:
+    - name: Créer un fichier de test
+      copy:
+        dest: /tmp/test.txt
+        content: "Hello depuis Ansible 🚀\n"

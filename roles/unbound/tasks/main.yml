@@ -1,0 +1,91 @@
+---
+# roles/unbound/tasks/main.yml
+
+- name: Paquets requis
+  apt:
+    name:
+      - unbound
+      - curl
+      - ca-certificates
+      - dnsutils
+      - cron
+    state: present
+    update_cache: true
+
+- name: Créer le fichier de log s'il n'existe pas
+  file:
+    path: "{{ unbound_logfile | default('/var/log/unbound.log') }}"
+    state: touch
+    owner: unbound
+    group: unbound
+    mode: "0640"
+
+- name: Déployer la configuration Unbound
+  template:
+    src: "unbound.conf.j2"
+    dest: "/etc/unbound/unbound.conf.d/unbound.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart unbound
+
+- name: Gérer root.hints (bloc)
+  when: unbound_manage_root_hints | default(true)
+  block:
+
+    - name: Télécharger root.hints depuis Internic
+      get_url:
+        url: "https://www.internic.net/domain/named.root"
+        dest: "{{ unbound_root_hints | default('/var/lib/unbound/root.hints') }}"
+        owner: unbound
+        group: unbound
+        mode: "0644"
+      register: get_hints
+      failed_when: false
+
+    - name: Vérifier que le fichier ressemble à un vrai root.hints
+      shell: 'grep -q "^A\.ROOT-SERVERS\.NET\." "{{ unbound_root_hints | default("/var/lib/unbound/root.hints") }}"'
+      register: hints_ok
+      changed_when: false
+      failed_when: false
+
+    - name: Fallback via dig@9.9.9.9 si le fichier n’est pas correct
+      when: hints_ok.rc != 0
+      shell: |
+        set -e
+        dig @9.9.9.9 . NS > "{{ unbound_root_hints | default('/var/lib/unbound/root.hints') }}"
+        chown unbound:unbound "{{ unbound_root_hints | default('/var/lib/unbound/root.hints') }}"
+        chmod 0644 "{{ unbound_root_hints | default('/var/lib/unbound/root.hints') }}"
+      args:
+        executable: /bin/bash
+
+    - name: Déployer le script d’update hebdo des root.hints
+      template:
+        src: "update-unbound-root-hints.sh.j2"
+        dest: "/usr/local/sbin/update-unbound-root-hints"
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Cron hebdo mise à jour root.hints
+      cron:
+        name: "Update Unbound root.hints"
+        user: root
+        special_time: weekly
+        job: "/usr/local/sbin/update-unbound-root-hints"
+
+- name: Initialiser l’ancre DNSSEC (si absente)
+  command: "unbound-anchor -a {{ unbound_auto_trust_anchor_file | default('/var/lib/unbound/root.key') }}"
+  args:
+    creates: "{{ unbound_auto_trust_anchor_file | default('/var/lib/unbound/root.key') }}"
+
+- name: Vérifier la configuration Unbound
+  command: "unbound-checkconf"
+  register: confcheck
+  changed_when: false
+
+- name: Activer et démarrer Unbound
+  systemd:
+    name: unbound
+    state: started
+    enabled: true

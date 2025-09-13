@@ -1,0 +1,74 @@
+server:
+{% for ip in unbound_listen_ipv4 %}
+  interface: {{ ip }}
+{% endfor %}
+{% for ip6 in unbound_listen_ipv6 %}
+  interface: {{ ip6 }}
+{% endfor %}
+  port: {{ unbound_port }}
+
+  do-ip4: yes
+  do-ip6: {{ 'yes' if unbound_do_ip6 else 'no' }}
+  do-udp: {{ 'yes' if unbound_do_udp else 'no' }}
+  do-tcp: {{ 'yes' if unbound_do_tcp else 'no' }}
+
+  # Durcissements / privacy
+  qname-minimisation: {{ 'yes' if unbound_qname_minimisation else 'no' }}
+  harden-glue: {{ 'yes' if unbound_harden_glue else 'no' }}
+  harden-dnssec-stripped: {{ 'yes' if unbound_harden_dnssec_stripped else 'no' }}
+  harden-below-nxdomain: {{ 'yes' if unbound_harden_below_nxdomain else 'no' }}
+  aggressive-nsec: {{ 'yes' if unbound_aggressive_nsec else 'no' }}
+  edns-buffer-size: {{ unbound_edns_buffer_size }}
+  harden-referral-path: {{ 'yes' if unbound_harden_referral_path else 'no' }}
+
+  # Cache & perfs
+  prefetch: yes
+  prefetch-key: yes
+  cache-min-ttl: {{ unbound_cache_min_ttl }}
+  cache-max-ttl: {{ unbound_cache_max_ttl }}
+  rrset-cache-size: {{ unbound_rrset_cache_size }}
+  msg-cache-size: {{ unbound_msg_cache_size }}
+  so-rcvbuf: {{ unbound_so_rcvbuf }}
+
+  # DNSSEC
+  auto-trust-anchor-file: "{{ unbound_auto_trust_anchor_file }}"
+
+  # Root hints (optionnel mais recommandé)
+  {% if unbound_manage_root_hints %}root-hints: "{{ unbound_root_hints }}"{% endif %}
+
+  # Journalisation
+  verbosity: {{ unbound_verbosity }}
+  log-queries: {{ 'yes' if unbound_log_queries else 'no' }}
+  log-replies: {{ 'yes' if unbound_log_replies else 'no' }}
+  log-servfail: {{ 'yes' if unbound_log_servfail|default(false) else 'no' }}
+  logfile: "{{ unbound_logfile }}"
+  chroot: ""
+
+  # ACL
+{% for cidr in unbound_acl_allow %}
+  access-control: {{ cidr }} allow
+{% endfor %}
+
+  # Adresses privées (comme chez toi)
+  private-address: 192.168.0.0/16
+  private-address: 169.254.0.0/16
+  private-address: 172.16.0.0/12
+  private-address: 10.0.0.0/8
+  private-address: fd00::/8
+  private-address: fe80::/10
+
+  # (option) Serve expired
+  {% if unbound_serve_expired %}serve-expired: yes{% endif %}
+  {% if unbound_serve_expired_ttl is defined %}serve-expired-ttl: {{ unbound_serve_expired_ttl }}{% endif %}
+
+# Blocage de TLD (comme ta conf actuelle)
+{% for tld in unbound_tld_refuse %}
+local-zone: "{{ tld }}." refuse
+{% endfor %}
+
+# Redirects locaux (comme ta conf principale actuelle)
+{% for r in unbound_local_redirects %}
+server:
+  local-zone: "{{ r.zone }}" redirect
+  local-data: "{{ r.zone }} IN A {{ r.a }}"
+{% endfor %}

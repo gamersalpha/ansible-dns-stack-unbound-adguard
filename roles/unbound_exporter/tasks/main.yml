@@ -1,0 +1,26 @@
+- name: Installer Python
+  apt:
+    name: python3
+    state: present
+
+- name: Déployer script exporter
+  template:
+    src: "unbound_simple_exporter.py.j2"
+    dest: "/usr/local/bin/unbound_simple_exporter.py"
+    mode: "0755"
+
+- name: Déployer service systemd
+  template:
+    src: "unbound_simple_exporter.service.j2"
+    dest: "/etc/systemd/system/unbound_simple_exporter.service"
+    mode: "0644"
+
+- name: Reloader systemd
+  systemd:
+    daemon_reload: true
+
+- name: Activer + démarrer exporter
+  systemd:
+    name: unbound_simple_exporter
+    state: started
+    enabled: true

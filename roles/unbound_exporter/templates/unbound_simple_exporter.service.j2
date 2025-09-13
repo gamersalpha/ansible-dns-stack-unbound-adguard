@@ -1,0 +1,13 @@
+[Unit]
+Description=Unbound Prometheus Exporter
+After=network.target unbound.service
+Wants=network-online.target
+
+[Service]
+Environment=EXPORTER_LISTEN={{ unbound_exporter_listen }}
+Environment=UNBOUND_CONTROL_SOCK={{ unbound_control_sock }}
+ExecStart=/usr/bin/python3 /usr/local/bin/unbound_simple_exporter.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
